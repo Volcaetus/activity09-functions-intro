@@ -14,6 +14,10 @@ In this activity, we will create a function for calculating the range of a numer
 
 To begin, we need `{tidyverse}` and `{gapminder}` (for a dataset to test our functions with) packages loaded.
 
+```{r}
+library(tidyverse)
+library(gapminder)
+```
 
 
 
@@ -66,7 +70,7 @@ diff_values <- larger_value - smaller_value
 Now I see that `gapminder$lifeExp` is the only thing that changes whenever I want to calculate the range so I have an outline for my function!
 Remember that a function has three main parts: 1) a name, 2) arguments, and 3) a body.
 
-```
+```{r }
 function_name <- function(function_arguments){
   function_body
 }
@@ -94,6 +98,16 @@ Below check this function using the `lifeExp` column of the `gapminder` dataset.
 Also, verify that it gets the correct result for `1:10` (a sequence of numbers starting at 1 and ending at 10, increasing by 1), `5:100`, `gapminder$pop` (the population of each country in the `gapminder` data set), and `gapminder$gdpPercap`.
 
 
+```{r}
+#life-exp
+diff_range(gapminder$lifeExp)
+#ranges
+diff_range(1:10)
+diff_range(5:100)
+#pop and gdp
+diff_range(gapminder$pop)
+diff_range(gapminder$gdpPercap)
+```
 
 
 ### Your turn
@@ -114,12 +128,26 @@ Also, explore this function with different `probs`.
 
 Once, you feel comfortable with the `quantile` function, create a function named `quantile_range` that calculates the statistical range.
 
+```{r}
+qr <- function(x) {
+  range = quantile(x, p = c(0,1))
+  return(diff_range(range))
+}
+```
 
 
 Test your function to verify that it works.
 Below check this function using the `lifeExp` column of the `gapminder` dataset.
 Also, verify that it gets the correct result for `1:10` (a sequence of numbers starting at 1 and ending at 10, increasing by 1), `5:100`, `gapminder$pop` (the population of each country in the `gapminder` data set), and `gapminder$gdpPercap`.
 
+```{r}
+#ranges
+qr(1:10)
+qr(5:100)
+#pop and gdp
+qr(gapminder$pop)
+qr(gapminder$gdpPercap)
+```
 
 
 ![](README-img/noun_pause.png) **Planned Pause Point**: This is the end of Part 1 of this activity. You can use the rest of the class period working on your project. The rest of this activity will be completed in our next class session/at home.
@@ -152,18 +180,21 @@ For functions that will be used again, it is a good practice to add argument val
 
 Explore the two argument validity checks by adding them to the beginning of your function above (one, then remove it and add the other) to check if the input `x` is a numeric vector (`is.numeric`).
 
-
-
+```{r }
+qr <- function(x) {
+  #for non numeric col
+  if(!is.numeric(x)){
+    stop("incorrect var type")
+  }
+  return(diff_range(range))
+}
+```
 
 ### Extend your function
 
 Calculating the range of a set of data is convenient, but it would be nice if we could determine the range between certain quantiles too.
 For example, the interquartile range (*IQR = Q3 − Q1*).
  
-
-
-
-
 
 Update your function so that it has the arguments `x` and `probs` and calculates the differences between two specified quantiles supplied to the `probs` argument.
 Test your function with:
@@ -173,7 +204,28 @@ Test your function with:
 
 Also test that your function breaks when it should.
 
+```{r}
+qr2 <- function(x, p = c(...)) {
+  if (!is.numeric(x) || !is.numeric(p)) {
+    stop("incorrect var type")
+  }
+  return(quantile(x, p))
+}
+```
 
+
+
+```{r}
+iqr2 <- function(x, p = c(0, 1)) {
+  if (!is.numeric(x) || !is.numeric(p)) {
+    stop("incorrect var type")
+  } 
+  else if (p < 0 || p > 1) {
+    stop("out of bounds")
+  }
+  return(quantile(x, p))
+}
+```
 
 
 
@@ -225,7 +277,20 @@ Setting `na.rm` within your function without providing users a way to override t
 Update your `quant_diff` function to be more robust (i.e., handle `NA`s) while also providing users to control the behavior around `NA`s.
 You are welcome to enforce your preferred choice when defining the default behavior, but be sure to provide a way for users to control this.
 
-
+```{r}
+qr.upd <- function(x, p = c(0, 1), na.rm = TRUE, ...) {
+  if (!is.numeric(x) || !is.numeric(p)) {
+    stop("incorrect var type")
+  }
+  else if (p < 0 || p > 1) {
+    stop("out of bounds")
+  }
+   else if (!length(p) == 2) {
+    stop("oopps forgot this one")
+  }
+  return(quantile(tibble(x), p, na.rm, ...))
+}
+```
 
 
 
@@ -245,8 +310,8 @@ You will also need to add `...` to where you want to allow for additional argume
 Test that this worked by running the following lines of code:
 
 ```{r}
-quantile_range(gapminder$lifeExp, probs = c(0.25, 0.75), type = 1)
-quantile_range(gapminder$lifeExp, probs = c(0.25, 0.75), type = 4)
+qr.upd(gapminder$lifeExp, p = c(0.25, 0.75), type = 1)
+qr.upd(gapminder$lifeExp, p = c(0.25, 0.75), type = 4)
 ```
 
 The `...` argument is useful for when you want to provide the ability to pass arbitrary arguments to another function, but don’t want to constantly be expanding the formal arguments.
@@ -263,10 +328,17 @@ For more information, see the [ellipsis package](https://ellipsis.r-lib.org/) do
 You have a function that is extremely flexible.
 Now we will see if it works within the `{tidyverse}`.
 
-In the code chunk below, calculate the IQR for the variable `gdpPercap` in the gapminder dataset for each continent in the year 2002.
+In the code chunk below, calculate the IQR for the variable `gdpPercap` 
+in the gapminder dataset 
+for each continent 
+in the year 2002.
 
 ```{r}
-
+gapminder %>% 
+  filter(year == 2002) %>% 
+  group_by(continent) %>% 
+  summarise(quantRange = qr.upd(x = gdpPercap, p = c(.25, .75)), p = c (.25, .75)) %>% 
+  pivot_wider(names_from = p, values_from = quantRange)
 ```
 
 
